@@ -8932,7 +8932,7 @@ exports.extractVariableValues = extractVariableValues;
 },{"crypto-js":72}],109:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.URLBuilder = void 0;
+exports.CloudflareErrors = exports.URLBuilder = void 0;
 class URLBuilder {
     constructor(baseUrl) {
         this.parameters = {};
@@ -8971,6 +8971,16 @@ class URLBuilder {
     }
 }
 exports.URLBuilder = URLBuilder;
+var CloudflareErrors;
+(function (CloudflareErrors) {
+    CloudflareErrors[CloudflareErrors["BotCaptcha"] = 0] = "BotCaptcha";
+    CloudflareErrors[CloudflareErrors["Unknown"] = 1] = "Unknown";
+    CloudflareErrors[CloudflareErrors["RefuseConnection"] = 2] = "RefuseConnection";
+    CloudflareErrors[CloudflareErrors["TimeOut"] = 3] = "TimeOut";
+    CloudflareErrors[CloudflareErrors["Unreachable"] = 4] = "Unreachable";
+    CloudflareErrors[CloudflareErrors["HandshakeFail"] = 5] = "HandshakeFail";
+    CloudflareErrors[CloudflareErrors["OneXXX"] = 6] = "OneXXX";
+})(CloudflareErrors = exports.CloudflareErrors || (exports.CloudflareErrors = {}));
 
 },{}],110:[function(require,module,exports){
 "use strict";
