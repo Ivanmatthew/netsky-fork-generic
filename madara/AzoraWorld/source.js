@@ -8937,16 +8937,48 @@ class Madara {
     }
     checkResponseError(response) {
         const status = response.status;
+        if (status >= 200 && status <= 299) {
+            return;
+        }
         switch (status) {
             case 403:
             case 503:
                 throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${this.baseUrl}> and press the cloud icon.`);
             case 404:
                 throw new Error(`The requested page ${response.request.url} was not found!`);
+            default:
+                throw new Error(`The requested page ${response.request.url} returned an unpredicted status code (${status})`);
         }
     }
 }
 exports.Madara = Madara;
+{
+    const data = response.data;
+    if (data.search("Cloudflare Ray ID:") == -1) { // We can safely assume this is in every (with) cloudlflare (related,) generated error page.
+        return;
+    }
+    const status = response.status;
+    switch (status) {
+        case 503:
+            return MadaraHelper_1.CloudflareErrors.BotCaptcha;
+        case 520:
+            return MadaraHelper_1.CloudflareErrors.Unknown;
+        case 521:
+            return MadaraHelper_1.CloudflareErrors.RefuseConnection;
+        case 522:
+            return MadaraHelper_1.CloudflareErrors.TimeOut;
+        case 523:
+            return MadaraHelper_1.CloudflareErrors.Unreachable;
+        case 524:
+            return MadaraHelper_1.CloudflareErrors.TimeOut;
+        case 525:
+            return MadaraHelper_1.CloudflareErrors.HandshakeFail;
+        case 526:
+            return MadaraHelper_1.CloudflareErrors.HandshakeFail;
+        case 530:
+            return MadaraHelper_1.CloudflareErrors.OneXXX;
+    }
+}
 
 },{"./MadaraHelper":110,"./MadaraParser":111,"@paperback/types":61}],109:[function(require,module,exports){
 "use strict";
