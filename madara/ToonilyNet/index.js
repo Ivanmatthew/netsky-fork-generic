@@ -8758,40 +8758,11 @@ Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: funct
 },{"./decode.js":99,"./encode.js":101,"./escape.js":102}],107:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.KissManga = exports.KissMangaInfo = void 0;
-const types_1 = require("@paperback/types");
-const Madara_1 = require("../Madara");
-const DOMAIN = 'https://1st-kissmanga.net';
-exports.KissMangaInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.2'),
-    name: 'KissManga',
-    description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
-    authorWebsite: 'http://github.com/TheNetsky',
-    icon: 'icon.png',
-    contentRating: types_1.ContentRating.MATURE,
-    websiteBaseURL: DOMAIN,
-    sourceTags: [],
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
-};
-class KissManga extends Madara_1.Madara {
-    constructor() {
-        super(...arguments);
-        this.baseUrl = DOMAIN;
-        this.chapterEndpoint = 1;
-        this.usePostIds = true;
-    }
-}
-exports.KissManga = KissManga;
-
-},{"../Madara":108,"@paperback/types":61}],108:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 exports.Madara = exports.getExportVersion = void 0;
 const types_1 = require("@paperback/types");
 const MadaraParser_1 = require("./MadaraParser");
 const MadaraHelper_1 = require("./MadaraHelper");
-const BASE_VERSION = '3.1.3';
+const BASE_VERSION = '3.1.2';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -8888,11 +8859,8 @@ class Madara {
         this.protectedChapterDataSelector = '#chapter-protector-data';
         /**
          * Some sites use the alternate URL for getting chapters through ajax
-         * 0: (POST) Form data https://domain.com/wp-admin/admin-ajax.php
-         * 1: (POST) Alternative Ajax page (https://domain.com/manga/manga-slug/ajax/chapters)
-         * 2: (POST) Manga page (https://domain.com/manga/manga-slug)
          */
-        this.chapterEndpoint = 0;
+        this.alternativeChapterAjaxEndpoint = false;
         /**
          * Different Madara sources might have a slightly different selector which is required to parse out
          * each page while on a chapter page. This is the selector
@@ -8941,50 +8909,30 @@ class Madara {
         return this.parser.parseMangaDetails($, mangaId, this);
     }
     async getChapters(mangaId) {
-        let requestConfig;
-        let path = this.directoryPath;
-        let slug = mangaId;
-        if (this.usePostIds) {
-            const postData = await this.convertPostIdToSlug(Number(mangaId));
-            path = postData.path;
-            slug = postData.slug;
+        let endpoint;
+        if (this.alternativeChapterAjaxEndpoint) {
+            if (this.usePostIds) {
+                const slugData = await this.convertPostIdToSlug(Number(mangaId));
+                endpoint = `${this.baseUrl}/${slugData.path}/${slugData.slug}/ajax/chapters`;
+            }
+            else {
+                endpoint = `${this.baseUrl}/${this.directoryPath}/${mangaId}/ajax/chapters`;
+            }
         }
-        switch (this.chapterEndpoint) {
-            case 0:
-                requestConfig = {
-                    url: `${this.baseUrl}/wp-admin/admin-ajax.php`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    },
-                    data: {
-                        'action': 'manga_get_chapters',
-                        'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
-                    }
-                };
-                break;
-            case 1:
-                requestConfig = {
-                    url: `${this.baseUrl}/${path}/${slug}/ajax/chapters`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    }
-                };
-                break;
-            case 2:
-                requestConfig = {
-                    url: `${this.baseUrl}/${path}/${slug}`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    }
-                };
-                break;
-            default:
-                throw new Error('Invalid chapter endpoint!');
+        else {
+            endpoint = `${this.baseUrl}/wp-admin/admin-ajax.php`;
         }
-        const request = App.createRequest(requestConfig);
+        const request = App.createRequest({
+            url: endpoint,
+            method: 'POST',
+            headers: {
+                'content-type': 'application/x-www-form-urlencoded'
+            },
+            data: {
+                'action': 'manga_get_chapters',
+                'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
+            }
+        });
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = this.cheerio.load(response.data);
@@ -9331,7 +9279,7 @@ class Madara {
 }
 exports.Madara = Madara;
 
-},{"./MadaraHelper":110,"./MadaraParser":111,"@paperback/types":61}],109:[function(require,module,exports){
+},{"./MadaraHelper":109,"./MadaraParser":110,"@paperback/types":61}],108:[function(require,module,exports){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -9382,7 +9330,7 @@ function extractVariableValues(chapterData) {
 }
 exports.extractVariableValues = extractVariableValues;
 
-},{"crypto-js":73}],110:[function(require,module,exports){
+},{"crypto-js":73}],109:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CloudflareErrors = exports.URLBuilder = void 0;
@@ -9435,7 +9383,7 @@ var CloudflareErrors;
     CloudflareErrors[CloudflareErrors["OneXXX"] = 6] = "OneXXX";
 })(CloudflareErrors = exports.CloudflareErrors || (exports.CloudflareErrors = {}));
 
-},{}],111:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
@@ -9715,5 +9663,33 @@ class Parser {
 }
 exports.Parser = Parser;
 
-},{"./MadaraDecrypter":109,"entities":106}]},{},[107])(107)
+},{"./MadaraDecrypter":108,"entities":106}],111:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ToonilyNet = exports.ToonilyNetInfo = void 0;
+const types_1 = require("@paperback/types");
+const Madara_1 = require("../Madara");
+const DOMAIN = 'https://toonily.net';
+exports.ToonilyNetInfo = {
+    version: (0, Madara_1.getExportVersion)('0.0.0'),
+    name: 'ToonilyNet',
+    description: `Extension that pulls manga from ${DOMAIN}`,
+    author: 'Netsky',
+    authorWebsite: 'http://github.com/TheNetsky',
+    icon: 'icon.png',
+    contentRating: types_1.ContentRating.MATURE,
+    websiteBaseURL: DOMAIN,
+    sourceTags: [],
+    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
+};
+class ToonilyNet extends Madara_1.Madara {
+    constructor() {
+        super(...arguments);
+        this.baseUrl = DOMAIN;
+        this.alternativeChapterAjaxEndpoint = true;
+    }
+}
+exports.ToonilyNet = ToonilyNet;
+
+},{"../Madara":107,"@paperback/types":61}]},{},[111])(111)
 });
