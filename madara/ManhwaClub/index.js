@@ -9660,30 +9660,32 @@ exports.Parser = Parser;
 },{"./MadaraDecrypter":108,"entities":106}],111:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToonilyNet = exports.ToonilyNetInfo = void 0;
+exports.ManhwaClub = exports.ManhwaClubInfo = void 0;
 const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
-const DOMAIN = 'https://toonily.net';
-exports.ToonilyNetInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.0'),
-    name: 'ToonilyNet',
+const DOMAIN = 'https://manhwaclub.net';
+exports.ManhwaClubInfo = {
+    version: (0, Madara_1.getExportVersion)('0.0.1'),
+    name: 'ManhwaClub',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
-    authorWebsite: 'http://github.com/TheNetsky',
+    author: 'IvanMatthew',
+    authorWebsite: 'https://github.com/Ivanmatthew',
     icon: 'icon.png',
-    contentRating: types_1.ContentRating.MATURE,
+    contentRating: types_1.ContentRating.ADULT,
     websiteBaseURL: DOMAIN,
-    sourceTags: [],
+    sourceTags: [
+        { text: '18+', type: types_1.BadgeColor.YELLOW }
+    ],
     intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
 };
-class ToonilyNet extends Madara_1.Madara {
+class ManhwaClub extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.alternativeChapterAjaxEndpoint = true;
+        this.usePostIds = true;
     }
 }
-exports.ToonilyNet = ToonilyNet;
+exports.ManhwaClub = ManhwaClub;
 
 },{"../Madara":107,"@paperback/types":61}]},{},[111])(111)
 });
