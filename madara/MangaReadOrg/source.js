@@ -8762,7 +8762,7 @@ exports.Madara = exports.getExportVersion = void 0;
 const types_1 = require("@paperback/types");
 const MadaraParser_1 = require("./MadaraParser");
 const MadaraHelper_1 = require("./MadaraHelper");
-const BASE_VERSION = '3.1.2';
+const BASE_VERSION = '3.1.3';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -8859,8 +8859,11 @@ class Madara {
         this.protectedChapterDataSelector = '#chapter-protector-data';
         /**
          * Some sites use the alternate URL for getting chapters through ajax
+         * 0: (POST) Form data https://domain.com/wp-admin/admin-ajax.php
+         * 1: (POST) Alternative Ajax page (https://domain.com/manga/manga-slug/ajax/chapters)
+         * 2: (POST) Manga page (https://domain.com/manga/manga-slug)
          */
-        this.alternativeChapterAjaxEndpoint = false;
+        this.chapterEndpoint = 0;
         /**
          * Different Madara sources might have a slightly different selector which is required to parse out
          * each page while on a chapter page. This is the selector
@@ -8909,30 +8912,50 @@ class Madara {
         return this.parser.parseMangaDetails($, mangaId, this);
     }
     async getChapters(mangaId) {
-        let endpoint;
-        if (this.alternativeChapterAjaxEndpoint) {
-            if (this.usePostIds) {
-                const slugData = await this.convertPostIdToSlug(Number(mangaId));
-                endpoint = `${this.baseUrl}/${slugData.path}/${slugData.slug}/ajax/chapters`;
-            }
-            else {
-                endpoint = `${this.baseUrl}/${this.directoryPath}/${mangaId}/ajax/chapters`;
-            }
+        let requestConfig;
+        let path = this.directoryPath;
+        let slug = mangaId;
+        if (this.usePostIds) {
+            const postData = await this.convertPostIdToSlug(Number(mangaId));
+            path = postData.path;
+            slug = postData.slug;
         }
-        else {
-            endpoint = `${this.baseUrl}/wp-admin/admin-ajax.php`;
+        switch (this.chapterEndpoint) {
+            case 0:
+                requestConfig = {
+                    url: `${this.baseUrl}/wp-admin/admin-ajax.php`,
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/x-www-form-urlencoded'
+                    },
+                    data: {
+                        'action': 'manga_get_chapters',
+                        'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
+                    }
+                };
+                break;
+            case 1:
+                requestConfig = {
+                    url: `${this.baseUrl}/${path}/${slug}/ajax/chapters`,
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/x-www-form-urlencoded'
+                    }
+                };
+                break;
+            case 2:
+                requestConfig = {
+                    url: `${this.baseUrl}/${path}/${slug}`,
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/x-www-form-urlencoded'
+                    }
+                };
+                break;
+            default:
+                throw new Error('Invalid chapter endpoint!');
         }
-        const request = App.createRequest({
-            url: endpoint,
-            method: 'POST',
-            headers: {
-                'content-type': 'application/x-www-form-urlencoded'
-            },
-            data: {
-                'action': 'manga_get_chapters',
-                'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
-            }
-        });
+        const request = App.createRequest(requestConfig);
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = this.cheerio.load(response.data);
@@ -9666,32 +9689,87 @@ exports.Parser = Parser;
 },{"./MadaraDecrypter":108,"entities":106}],111:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MangaCultivator = exports.MangaCultivatorInfo = void 0;
+exports.MangaReadOrg = exports.MangaReadOrgInfo = void 0;
 const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
-const DOMAIN = 'https://mangacult.org';
-exports.MangaCultivatorInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.2'),
-    name: 'MangaCultivator',
+const MangaReadOrgParser_1 = require("./MangaReadOrgParser");
+const DOMAIN = 'https://www.mangaread.org';
+exports.MangaReadOrgInfo = {
+    version: (0, Madara_1.getExportVersion)('0.0.0'),
+    name: 'MangaReadOrg',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Community',
-    authorWebsite: '-',
+    author: 'Netsky',
+    authorWebsite: 'http://github.com/TheNetsky',
     icon: 'icon.png',
     contentRating: types_1.ContentRating.EVERYONE,
     websiteBaseURL: DOMAIN,
     sourceTags: [],
     intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
 };
-class MangaCultivator extends Madara_1.Madara {
+class MangaReadOrg extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.alternativeChapterAjaxEndpoint = true;
-        this.hasProtectedChapters = true;
-        this.usePostIds = true;
+        this.chapterEndpoint = 1;
+        this.parser = new MangaReadOrgParser_1.MangaReadOrgParser();
     }
 }
-exports.MangaCultivator = MangaCultivator;
+exports.MangaReadOrg = MangaReadOrg;
 
-},{"../Madara":107,"@paperback/types":61}]},{},[111])(111)
+},{"../Madara":107,"./MangaReadOrgParser":112,"@paperback/types":61}],112:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MangaReadOrgParser = void 0;
+const MadaraParser_1 = require("../MadaraParser");
+class MangaReadOrgParser extends MadaraParser_1.Parser {
+    constructor() {
+        super(...arguments);
+        this.parseDate = (date) => {
+            date = date.toUpperCase();
+            let time;
+            const number = Number((/\d*/.exec(date) ?? [])[0]);
+            if (date.includes('LESS THAN AN HOUR') || date.includes('JUST NOW')) {
+                time = new Date(Date.now());
+            }
+            else if (date.includes('YEAR') || date.includes('YEARS')) {
+                time = new Date(Date.now() - (number * 31556952000));
+            }
+            else if (date.includes('MONTH') || date.includes('MONTHS')) {
+                time = new Date(Date.now() - (number * 2592000000));
+            }
+            else if (date.includes('WEEK') || date.includes('WEEKS')) {
+                time = new Date(Date.now() - (number * 604800000));
+            }
+            else if (date.includes('YESTERDAY')) {
+                time = new Date(Date.now() - 86400000);
+            }
+            else if (date.includes('DAY') || date.includes('DAYS')) {
+                time = new Date(Date.now() - (number * 86400000));
+            }
+            else if (date.includes('HOUR') || date.includes('HOURS')) {
+                time = new Date(Date.now() - (number * 3600000));
+            }
+            else if (date.includes('MINUTE') || date.includes('MINUTES') || date.includes('MINS')) {
+                time = new Date(Date.now() - (number * 60000));
+            }
+            else if (date.includes('SECOND') || date.includes('SECONDS')) {
+                time = new Date(Date.now() - (number * 1000));
+            }
+            else if (date.includes('.')) {
+                const dateParts = date.split('.');
+                const year = parseInt(dateParts[2]);
+                const month = parseInt(dateParts[1]) - 1;
+                const day = parseInt(dateParts[0]);
+                time = new Date(year, month, day);
+            }
+            else {
+                time = new Date(date);
+            }
+            return time;
+        };
+    }
+}
+exports.MangaReadOrgParser = MangaReadOrgParser;
+
+},{"../MadaraParser":110}]},{},[111])(111)
 });
