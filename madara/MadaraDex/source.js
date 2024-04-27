@@ -8762,7 +8762,7 @@ exports.Madara = exports.getExportVersion = void 0;
 const types_1 = require("@paperback/types");
 const MadaraParser_1 = require("./MadaraParser");
 const MadaraHelper_1 = require("./MadaraHelper");
-const BASE_VERSION = '3.1.3';
+const BASE_VERSION = '3.1.2';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -8859,11 +8859,8 @@ class Madara {
         this.protectedChapterDataSelector = '#chapter-protector-data';
         /**
          * Some sites use the alternate URL for getting chapters through ajax
-         * 0: (POST) Form data https://domain.com/wp-admin/admin-ajax.php
-         * 1: (POST) Alternative Ajax page (https://domain.com/manga/manga-slug/ajax/chapters)
-         * 2: (POST) Manga page (https://domain.com/manga/manga-slug)
          */
-        this.chapterEndpoint = 0;
+        this.alternativeChapterAjaxEndpoint = false;
         /**
          * Different Madara sources might have a slightly different selector which is required to parse out
          * each page while on a chapter page. This is the selector
@@ -8912,50 +8909,30 @@ class Madara {
         return this.parser.parseMangaDetails($, mangaId, this);
     }
     async getChapters(mangaId) {
-        let requestConfig;
-        let path = this.directoryPath;
-        let slug = mangaId;
-        if (this.usePostIds) {
-            const postData = await this.convertPostIdToSlug(Number(mangaId));
-            path = postData.path;
-            slug = postData.slug;
+        let endpoint;
+        if (this.alternativeChapterAjaxEndpoint) {
+            if (this.usePostIds) {
+                const slugData = await this.convertPostIdToSlug(Number(mangaId));
+                endpoint = `${this.baseUrl}/${slugData.path}/${slugData.slug}/ajax/chapters`;
+            }
+            else {
+                endpoint = `${this.baseUrl}/${this.directoryPath}/${mangaId}/ajax/chapters`;
+            }
         }
-        switch (this.chapterEndpoint) {
-            case 0:
-                requestConfig = {
-                    url: `${this.baseUrl}/wp-admin/admin-ajax.php`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    },
-                    data: {
-                        'action': 'manga_get_chapters',
-                        'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
-                    }
-                };
-                break;
-            case 1:
-                requestConfig = {
-                    url: `${this.baseUrl}/${path}/${slug}/ajax/chapters`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    }
-                };
-                break;
-            case 2:
-                requestConfig = {
-                    url: `${this.baseUrl}/${path}/${slug}`,
-                    method: 'POST',
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded'
-                    }
-                };
-                break;
-            default:
-                throw new Error('Invalid chapter endpoint!');
+        else {
+            endpoint = `${this.baseUrl}/wp-admin/admin-ajax.php`;
         }
-        const request = App.createRequest(requestConfig);
+        const request = App.createRequest({
+            url: endpoint,
+            method: 'POST',
+            headers: {
+                'content-type': 'application/x-www-form-urlencoded'
+            },
+            data: {
+                'action': 'manga_get_chapters',
+                'manga': this.usePostIds ? mangaId : await this.convertSlugToPostId(mangaId, this.directoryPath)
+            }
+        });
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = this.cheerio.load(response.data);
@@ -9261,13 +9238,19 @@ class Madara {
                 throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${this.baseUrl}> and press the cloud icon.`);
             case 404:
                 throw new Error(`The requested page ${response.request.url} was not found!`);
-            default:
+            default: {
+                const cloudfareError = this.checkCloudflareError(response);
+                if (cloudfareError) {
+                    throw new Error(`The requested page ${response.request.url} returned a Cloudflare error: ${cloudfareError}`);
+                }
                 throw new Error(`The requested page ${response.request.url} returned an unpredicted status code (${status})`);
+            }
         }
     }
     checkCloudflareError(response) {
         const data = response.data;
-        if (data.search("Cloudflare Ray ID:") == -1) { // We can safely assume this is in every (with) cloudlflare (related,) generated error page.
+        // We can safely assume this text snippet is in every, with cloudlflare related, generated error page.
+        if (data.search('Cloudflare Ray ID:') == -1) {
             return null;
         }
         const status = response.status;
@@ -9375,7 +9358,7 @@ class MadaraDex extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.chapterEndpoint = 1;
+        this.alternativeChapterAjaxEndpoint = true;
         this.searchMangaSelector = 'div.c-tabs-item > div.row';
     }
 }
