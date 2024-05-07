@@ -8855,7 +8855,7 @@ exports.Madara = exports.getExportVersion = void 0;
 const types_1 = require("@paperback/types");
 const MadaraParser_1 = require("./MadaraParser");
 const MadaraHelper_1 = require("./MadaraHelper");
-const BASE_VERSION = '3.1.3';
+const BASE_VERSION = '3.1.4';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
