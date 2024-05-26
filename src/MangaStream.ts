@@ -420,6 +420,8 @@ export abstract class MangaStream implements ChapterProviding, HomePageSectionsP
         })
 
         const response = await this.requestManager.schedule(request, 1)
+        console.log('HOMEPAGE SECTION RESPONSE:')
+        console.log(response.data)
         this.checkResponseError(response)
         const $ = this.cheerio.load(response.data as string)
 
