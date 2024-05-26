@@ -1466,7 +1466,7 @@ exports.MangaGalaxyInfo = {
     version: (0, MangaStream_1.getExportVersion)('0.0.0'),
     name: 'MangaGalaxy',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
+    author: 'Ivanmatthew',
     authorWebsite: 'http://github.com/TheNetsky',
     icon: 'icon.png',
     contentRating: types_1.ContentRating.MATURE,
@@ -1495,7 +1495,7 @@ const MangaStreamParser_1 = require("./MangaStreamParser");
 const UrlBuilder_1 = require("./UrlBuilder");
 const MangaStreamHelper_1 = require("./MangaStreamHelper");
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '3.0.4';
+const BASE_VERSION = '3.0.5';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -1521,6 +1521,8 @@ class MangaStream {
                     return request;
                 },
                 interceptResponse: async (response) => {
+                    console.log('GENERAL MANGAGALAXY RESPONSE:');
+                    console.log(response.data);
                     if (response.headers.location) {
                         response.headers.location = response.headers.location.replace(/^http:/, 'https:');
                     }
@@ -1868,6 +1870,8 @@ class MangaStream {
             method: 'GET'
         });
         const response = await this.requestManager.schedule(request, 1);
+        console.log('VIEW MORE RESPONSE:');
+        console.log(response.data);
         const $ = this.cheerio.load(response.data);
         const items = await this.parser.parseViewMore($, this);
         metadata = !this.parser.isLastPage($, 'view_more') ? { page: page + 1 } : undefined;
