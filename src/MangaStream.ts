@@ -36,7 +36,7 @@ import {
 } from './MangaStreamInterfaces'
 
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '3.0.4'
+const BASE_VERSION = '3.0.5'
 export const getExportVersion = (EXTENSION_VERSION: string): string => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.')
 }
@@ -67,6 +67,8 @@ export abstract class MangaStream implements ChapterProviding, HomePageSectionsP
             },
 
             interceptResponse: async (response: Response): Promise<Response> => {
+                console.log('GENERAL MANGAGALAXY RESPONSE:')
+                console.log(response.data)
                 if (response.headers.location) {
                     response.headers.location = response.headers.location.replace(/^http:/, 'https:')
                 }
@@ -467,6 +469,8 @@ export abstract class MangaStream implements ChapterProviding, HomePageSectionsP
         })
 
         const response = await this.requestManager.schedule(request, 1)
+        console.log('VIEW MORE RESPONSE:')
+        console.log(response.data)
         const $ = this.cheerio.load(response.data as string)
 
         const items: PartialSourceManga[] = await this.parser.parseViewMore($, this)

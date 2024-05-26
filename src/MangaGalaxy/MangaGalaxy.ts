@@ -16,7 +16,7 @@ export const MangaGalaxyInfo: SourceInfo = {
     version: getExportVersion('0.0.0'),
     name: 'MangaGalaxy',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
+    author: 'Ivanmatthew',
     authorWebsite: 'http://github.com/TheNetsky',
     icon: 'icon.png',
     contentRating: ContentRating.MATURE,
